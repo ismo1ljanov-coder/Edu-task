@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
 
-export async function listNotifications(userId: string, page: number, limit: number, skip: number) {
+export async function listNotifications(export: userId, page: number, limit: number, skip: number) {
   const where = { userId };
   const [items, total, unreadCount] = await Promise.all([
     prisma.notification.findMany({
