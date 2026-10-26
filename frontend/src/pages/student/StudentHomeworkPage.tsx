@@ -7,10 +7,6 @@ import { HomeworkResultRow } from '../../types';
 import { getApiErrorMessage } from '../../api/client';
 import { notify } from '../../components/ui/toast';
 
-// The real So'zdon (Word-Box-Game) site the student is redirected to.
-// Configure via VITE_SOZDON_URL — defaults to the production domain.
-const SOZDON_URL = import.meta.env.VITE_SOZDON_URL ?? 'https://sozdon.uz';
-
 const statusLabel: Record<string, { text: string; className: string }> = {
   NOT_STARTED: { text: 'Boshlanmagan', className: 'bg-slate-100 text-brand-slate' },
   IN_PROGRESS: { text: 'Jarayonda', className: 'bg-amber-100 text-amber-700' },
@@ -36,21 +32,26 @@ export function StudentHomeworkPage() {
       .catch((err) => notify.error(getApiErrorMessage(err)));
   }, []);
 
-  // Called when the student taps "So'zdon orqali bajarish". We first ping our
-  // own mock /sozdon/start endpoint (so a session record exists on our side),
-  // then open the real sozdon.uz site in a new tab with the homework id so
-  // So'zdon knows which word list to load once its own API is ready.
+  // O'quvchi "So'zdon orqali bajarish" ni bosganda: backend So'zdon'dan bir
+  // martalik kirish havolasini oladi (login so'ralmaydi), shu havola yangi
+  // tabda ochiladi. Oynani darhol ochamiz — aks bo'lsa telefon brauzeri
+  // asinxron ochilgan oynani bloklaydi.
   async function handleOpenSozdon(homeworkId: string) {
     setOpeningId(homeworkId);
+    const win = window.open('', '_blank');
     try {
-      await sozdonApi.start(homeworkId);
-    } catch {
-      // Non-blocking: even if our mock call fails, still let the student
-      // continue to So'zdon — the backend integration isn't live yet anyway.
+      const { data } = await sozdonApi.start(homeworkId);
+      if (win) {
+        win.opener = null;
+        win.location.href = data.data.url;
+      } else {
+        window.location.href = data.data.url;
+      }
+    } catch (err) {
+      win?.close();
+      notify.error(getApiErrorMessage(err));
     } finally {
       setOpeningId(null);
-      const url = `${SOZDON_URL}/?homeworkId=${encodeURIComponent(homeworkId)}&source=edutask`;
-      window.open(url, '_blank', 'noopener,noreferrer');
     }
   }
 

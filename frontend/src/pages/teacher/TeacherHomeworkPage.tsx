@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, RefreshCw } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
 import { Button } from '../../components/ui/Button';
 import { HomeworkForm } from '../../components/homework/HomeworkForm';
-import { homeworkApi } from '../../api/endpoints';
+import { homeworkApi, sozdonApi } from '../../api/endpoints';
 import { Homework } from '../../types';
 import { getApiErrorMessage } from '../../api/client';
 import { notify } from '../../components/ui/toast';
@@ -12,6 +12,7 @@ import { notify } from '../../components/ui/toast';
 export function TeacherHomeworkPage() {
   const [homeworks, setHomeworks] = useState<Homework[] | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   function load() {
     homeworkApi
@@ -21,6 +22,18 @@ export function TeacherHomeworkPage() {
   }
 
   useEffect(load, []);
+
+  async function handleSync(homeworkId: string) {
+    setSyncingId(homeworkId);
+    try {
+      const { data } = await sozdonApi.sync(homeworkId);
+      notify.success(`So'zdon'dan ${data.data.synced} ta o'quvchi natijasi yangilandi`);
+    } catch (err) {
+      notify.error(getApiErrorMessage(err));
+    } finally {
+      setSyncingId(null);
+    }
+  }
 
   return (
     <div>
@@ -59,6 +72,15 @@ export function TeacherHomeworkPage() {
                 <span>{new Date(hw.startDate).toLocaleDateString('uz-UZ')}</span>
                 <span>{new Date(hw.endDate).toLocaleDateString('uz-UZ')}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => handleSync(hw.id)}
+                disabled={syncingId === hw.id}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-blue-600 disabled:opacity-60"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${syncingId === hw.id ? 'animate-spin' : ''}`} aria-hidden />
+                So'zdon'dan yangilash
+              </button>
             </Card>
           ))
         )}

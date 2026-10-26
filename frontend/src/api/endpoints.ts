@@ -78,9 +78,20 @@ export const homeworkApi = {
     apiClient.get<{ success: true; data: HomeworkResultRow[] }>('/homework/student/list'),
 };
 
-// --- So'zdon (mock backend contract; real button opens sozdon.uz directly) -----
+// --- So'zdon (sozdon-uzb bilan server-to-server integratsiya) --------------------
 export const sozdonApi = {
-  start: (homeworkId: string) => apiClient.post('/sozdon/start', { homeworkId }),
+  /** Bir martalik kirish havolasi (2 daqiqa amal qiladi) */
+  start: (homeworkId: string) =>
+    apiClient.post<{ success: true; data: { url: string } }>('/sozdon/start', { homeworkId }),
+  /** O'quvchi: o'z progressini So'zdon'dan yangilash */
+  progress: (homeworkId: string) =>
+    apiClient.get<{ success: true; data: { progress: number; status: string; learned: number; total: number } }>(
+      '/sozdon/progress',
+      { params: { homeworkId } },
+    ),
+  /** O'qituvchi: guruh progressini So'zdon'dan yangilash */
+  sync: (homeworkId: string) =>
+    apiClient.post<{ success: true; data: { synced: number } }>(`/sozdon/sync/${homeworkId}`),
 };
 
 // --- Notifications -----------------------------------------------------------
