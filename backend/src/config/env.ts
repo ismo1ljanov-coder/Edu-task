@@ -29,5 +29,10 @@ export const env = {
     max: parseInt(required('RATE_LIMIT_MAX', '200'), 10),
   },
 
+  sozdon: {
+    apiUrl: process.env.SOZDON_API_URL ?? '',
+    apiKey: process.env.SOZDON_API_KEY ?? '',
+  },
+
   maxUploadMb: parseInt(required('MAX_UPLOAD_MB', '10'), 10),
 };
