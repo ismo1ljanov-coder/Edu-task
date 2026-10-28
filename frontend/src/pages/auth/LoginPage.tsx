@@ -1,8 +1,8 @@
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Lock, Phone } from 'lucide-react';
+import { GraduationCap, BookOpenCheck, Users, Building2, ShieldCheck, Loader2, ChevronRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../../components/ui/Button';
 import { notify } from '../../components/ui/toast';
 
 const roleHome: Record<string, string> = {
@@ -12,25 +12,32 @@ const roleHome: Record<string, string> = {
   STUDENT: '/student',
 };
 
+// Demo rejim: investor va mehmonlar parolsiz, bitta bosish bilan kiradi.
+const DEMO_PASSWORD = 'Password123!';
+const demoAccounts: { label: string; hint: string; phone: string; icon: LucideIcon }[] = [
+  { label: "O'qituvchi", hint: 'Vazifa yaratish va tekshirish', phone: '+998900000003', icon: BookOpenCheck },
+  { label: "O'quvchi", hint: 'Vazifani bajarish (So\'zdon orqali)', phone: '+998900000004', icon: Users },
+  { label: 'Filial admin', hint: "Guruhlar va o'qituvchilar nazorati", phone: '+998900000002', icon: Building2 },
+  { label: 'Super admin', hint: "Barcha filiallar statistikasi", phone: '+998900000001', icon: ShieldCheck },
+];
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingPhone, setLoadingPhone] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setIsLoading(true);
+  async function enterAs(phone: string) {
+    if (loadingPhone) return;
+    setLoadingPhone(phone);
     try {
-      await login(phone, password);
+      await login(phone, DEMO_PASSWORD);
       const stored = localStorage.getItem('edutask_user');
       const user = stored ? JSON.parse(stored) : null;
       navigate(roleHome[user?.role] ?? '/', { replace: true });
     } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Xatolik yuz berdi');
+      notify.error(error instanceof Error ? error.message : 'Xatolik yuz berdi, qayta urinib ko\'ring');
     } finally {
-      setIsLoading(false);
+      setLoadingPhone(null);
     }
   }
 
@@ -45,49 +52,34 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-brand-slate">Uy vazifalarini boshqarish tizimi</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl2 bg-white p-6 shadow-card">
-          <div>
-            <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-brand-ink">
-              Telefon raqami
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-slate" aria-hidden />
-              <input
-                id="phone"
-                type="tel"
-                required
-                autoComplete="tel"
-                placeholder="+998 90 123 45 67"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-brand-ink">
-              Parol
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-slate" aria-hidden />
-              <input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-blue-500"
-              />
-            </div>
-          </div>
-
-          <Button type="submit" isLoading={isLoading} className="w-full">
-            Kirish
-          </Button>
-        </form>
+        <div className="space-y-3 rounded-xl2 bg-white p-6 shadow-card">
+          <p className="mb-1 text-center text-sm font-medium text-brand-ink">Demo: kim sifatida kirasiz?</p>
+          {demoAccounts.map(({ label, hint, phone, icon: Icon }) => (
+            <button
+              key={phone}
+              type="button"
+              onClick={() => enterAs(phone)}
+              disabled={loadingPhone !== null}
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-brand-blue-500 hover:bg-brand-blue-50 disabled:opacity-60"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-blue-50 text-brand-blue-500">
+                <Icon className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-brand-ink">{label}</span>
+                <span className="block text-xs text-brand-slate">{hint}</span>
+              </span>
+              {loadingPhone === phone ? (
+                <Loader2 className="h-4 w-4 animate-spin text-brand-blue-500" aria-hidden />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-brand-slate" aria-hidden />
+              )}
+            </button>
+          ))}
+          <p className="pt-1 text-center text-xs text-brand-slate">
+            Birinchi kirish 30–50 soniya olishi mumkin: server uyg'onmoqda.
+          </p>
+        </div>
       </div>
     </div>
   );
