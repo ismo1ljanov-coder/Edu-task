@@ -7,7 +7,7 @@ import {
   BarChart3,
   Boxes,
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role } from '../../types';
 
 export interface NavItem {
   to: string;
