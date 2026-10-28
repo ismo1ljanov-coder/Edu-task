@@ -24,3 +24,8 @@ export const stats = asyncHandler(async (req: AuthenticatedRequest, res: Respons
   const result = await branchService.getBranchStats(req.params.id);
   sendSuccess(res, result);
 });
+
+export const remove = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const result = await branchService.deleteBranch(req.params.id);
+  sendSuccess(res, result);
+});

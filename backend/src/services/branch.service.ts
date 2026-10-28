@@ -55,3 +55,26 @@ export async function getBranchStats(id: string) {
     paymentBreakdown: paymentStats.map((p) => ({ status: p.status, count: p._count })),
   };
 }
+
+/**
+ * Markazni butunlay o'chiradi: vazifalar, guruhlar, o'quvchilar, ustozlar,
+ * markaz foydalanuvchilari va taklif havolalari bilan birga. Qaytarib bo'lmaydi.
+ */
+export async function deleteBranch(id: string) {
+  const branch = await prisma.branch.findUnique({ where: { id } });
+  if (!branch) throw ApiError.notFound('Markaz topilmadi');
+
+  await prisma.$transaction(async (tx) => {
+    const groups = await tx.group.findMany({ where: { branchId: id }, select: { id: true } });
+    const groupIds = groups.map((g) => g.id);
+    await tx.homework.deleteMany({ where: { groupId: { in: groupIds } } });
+    await tx.invite.deleteMany({ where: { branchId: id } });
+    await tx.student.deleteMany({ where: { branchId: id } });
+    await tx.group.deleteMany({ where: { branchId: id } });
+    await tx.teacher.deleteMany({ where: { branchId: id } });
+    // Super adminlar markazga bog'lanmagan, shuning uchun ular o'chmaydi
+    await tx.user.deleteMany({ where: { branchId: id, role: { not: 'SUPER_ADMIN' } } });
+    await tx.branch.delete({ where: { id } });
+  });
+  return { deleted: true, name: branch.name };
+}

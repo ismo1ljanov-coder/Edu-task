@@ -47,6 +47,7 @@ export const branchApi = {
   create: (payload: { name: string; address?: string; phone?: string }) =>
     apiClient.post('/branches', payload),
   update: (id: string, payload: Partial<Branch>) => apiClient.patch(`/branches/${id}`, payload),
+  remove: (id: string) => apiClient.delete(`/branches/${id}`),
   stats: (id: string) => apiClient.get(`/branches/${id}/stats`),
 };
 

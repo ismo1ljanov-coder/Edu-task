@@ -60,6 +60,7 @@ router.post(
  *       200: { description: Yangilangan filial }
  */
 router.patch('/:id', branchController.update);
+router.delete('/:id', branchController.remove);
 
 /**
  * @openapi

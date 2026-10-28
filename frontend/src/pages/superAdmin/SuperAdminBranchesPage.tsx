@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Plus, X, Users, GraduationCap } from 'lucide-react';
+import { Plus, X, Users, GraduationCap, Trash2 } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
 import { InviteButton } from '../../components/InviteButton';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
@@ -25,6 +25,20 @@ export function SuperAdminBranchesPage() {
   }
 
   useEffect(load, []);
+
+  async function handleDelete(b: Branch) {
+    const ok = window.confirm(
+      `"${b.name}" markazini o'chirasizmi?\n\nUning barcha ustozlari, guruhlari, o'quvchilari va vazifalari ham o'chadi. Buni qaytarib bo'lmaydi.`,
+    );
+    if (!ok) return;
+    try {
+      await branchApi.remove(b.id);
+      notify.success("Markaz o'chirildi");
+      load();
+    } catch (error) {
+      notify.error(getApiErrorMessage(error));
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -90,6 +104,13 @@ export function SuperAdminBranchesPage() {
                   {b._count?.students ?? 0} o'quvchi
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(b)}
+                className="mt-3 flex items-center gap-1.5 text-xs font-medium text-red-600 hover:underline"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden /> Markazni o'chirish
+              </button>
               <InviteButton
                 role="BRANCH_ADMIN"
                 branchId={b.id}
