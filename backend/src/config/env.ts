@@ -39,6 +39,11 @@ export const env = {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
+    // Username bo'yicha ham (masalan "ismo1ljanov", @ belgisiz) — Telegram imzolagan ma'lumot
+    superAdminUsernames: (process.env.SUPER_ADMIN_TELEGRAM_USERNAMES ?? '')
+      .split(',')
+      .map((s) => s.trim().replace(/^@/, '').toLowerCase())
+      .filter(Boolean),
   },
 
   sozdon: {

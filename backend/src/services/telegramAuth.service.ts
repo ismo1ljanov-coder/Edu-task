@@ -114,7 +114,10 @@ export async function loginWithTelegram(initData: string, startParamFromBody?: s
   let user = await prisma.user.findUnique({ where: { telegramId } });
 
   // Super admin: Telegram ID muhit o'zgaruvchisida ko'rsatilgan
-  if (env.telegram.superAdminIds.includes(telegramId)) {
+  const isSuperAdmin =
+    env.telegram.superAdminIds.includes(telegramId) ||
+    (!!tg.username && env.telegram.superAdminUsernames.includes(tg.username.toLowerCase()));
+  if (isSuperAdmin) {
     if (!user) {
       user = await prisma.user.create({
         data: { ...(await telegramAccountFields(tg)), role: Role.SUPER_ADMIN },
