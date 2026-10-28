@@ -37,7 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tg.ready();
       tg.expand();
       authApi
-        .telegram(tg.initData, tg.initDataUnsafe?.start_param)
+        .telegram(
+          tg.initData,
+          tg.initDataUnsafe?.start_param ||
+            new URLSearchParams(window.location.search).get('invite') ||
+            undefined,
+        )
         .then(({ data }) => {
           saveSession(data.data);
           tg.requestWriteAccess?.();

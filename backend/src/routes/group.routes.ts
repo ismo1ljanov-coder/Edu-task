@@ -1,3 +1,9 @@
+import { Response } from 'express';
+import { prisma } from '../config/prisma';
+import { asyncHandler } from '../middleware/error.middleware';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { sendSuccess } from '../utils/apiResponse';
+import { ApiError } from '../utils/ApiError';
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { Role } from '@prisma/client';
@@ -26,6 +32,21 @@ router.use(authenticate);
  *       201: { description: Yaratilgan guruh }
  */
 router.get('/', requireRole(Role.BRANCH_ADMIN, Role.TEACHER), groupController.list);
+// Ustoz o'zi uchun guruh ochadi (markaz admini kutilmaydi)
+router.post(
+  '/mine',
+  requireRole(Role.TEACHER),
+  validate([body('name').isString().trim().isLength({ min: 2, max: 80 })]),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const teacher = await prisma.teacher.findUnique({ where: { userId: req.user!.id } });
+    if (!teacher) throw ApiError.forbidden("Ustoz profili topilmadi");
+    const group = await prisma.group.create({
+      data: { name: String(req.body.name).trim(), branchId: teacher.branchId, teacherId: teacher.id },
+    });
+    sendSuccess(res, group);
+  }),
+);
+
 router.post(
   '/',
   requireRole(Role.BRANCH_ADMIN),

@@ -4,6 +4,11 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Demo ma'lumotlar faqat SEED_DEMO=true bo'lganda yaratiladi (production'da yo'q)
+  if (process.env.SEED_DEMO !== 'true') {
+    console.log('Seed: demo ma\'lumotlar o\'tkazib yuborildi (SEED_DEMO=true emas)');
+    return;
+  }
   const passwordHash = await bcrypt.hash('Password123!', 12);
 
   const superAdmin = await prisma.user.upsert({

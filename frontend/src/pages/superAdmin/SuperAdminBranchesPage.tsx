@@ -31,7 +31,7 @@ export function SuperAdminBranchesPage() {
     setIsSubmitting(true);
     try {
       await branchApi.create({ name, address, phone });
-      notify.success('Filial yaratildi');
+      notify.success("Markaz qo'shildi — endi «Markaz adminini taklif qilish» havolasini yuboring");
       setShowModal(false);
       setName('');
       setAddress('');

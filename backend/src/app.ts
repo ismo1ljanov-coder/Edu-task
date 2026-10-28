@@ -19,6 +19,7 @@ import groupRoutes from './routes/group.routes';
 import homeworkRoutes from './routes/homework.routes';
 import sozdonRoutes from './routes/sozdon.routes';
 import inviteRoutes from './routes/invite.routes';
+import { handleUpdate, webhookSecret } from './services/bot.service';
 import notificationRoutes from './routes/notification.routes';
 import statsRoutes from './routes/stats.routes';
 
@@ -39,6 +40,16 @@ export function createApp(): Express {
   app.use(cookieParser());
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+  // Telegram bot webhook (limiter va sanitizatsiyadan oldin; maxfiy sarlavha bilan himoyalangan)
+  app.post('/api/telegram/webhook', (req, res) => {
+    if (req.header('x-telegram-bot-api-secret-token') !== webhookSecret()) {
+      res.sendStatus(401);
+      return;
+    }
+    res.sendStatus(200);
+    handleUpdate(req.body).catch((e) => console.warn('[bot] update xato:', (e as Error).message));
+  });
+
   app.use(sanitizeBody); // XSS sanitation on every request body
   app.use('/api', apiLimiter); // rate limiting on all API routes
 

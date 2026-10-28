@@ -75,6 +75,7 @@ export const userApi = {
 export const groupApi = {
   list: () => apiClient.get<{ success: true; data: Group[] }>('/groups'),
   create: (payload: { name: string; teacherId: string }) => apiClient.post('/groups', payload),
+  createMine: (name: string) => apiClient.post<{ success: true; data: Group }>('/groups/mine', { name }),
   update: (id: string, payload: Partial<Group>) => apiClient.patch(`/groups/${id}`, payload),
   addStudent: (groupId: string, studentId: string) =>
     apiClient.post(`/groups/${groupId}/students`, { studentId }),

@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { prisma } from './config/prisma';
+import { setupBot } from './services/bot.service';
 
 const app = createApp();
 
@@ -9,6 +10,7 @@ const server = app.listen(env.port, () => {
   console.info(`EduTask API ${env.port}-portda ishga tushdi (${env.nodeEnv})`);
   // eslint-disable-next-line no-console
   console.info(`Swagger docs: http://localhost:${env.port}/api/docs`);
+  void setupBot();
 });
 
 async function shutdown(signal: string) {
