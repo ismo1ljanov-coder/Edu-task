@@ -52,42 +52,47 @@ const contactLine = () => {
 
 const CAPABILITIES: Record<Role | 'GUEST', string> = {
   GUEST:
-    "<b>Men nima qila olaman:</b>\n" +
-    "📚 Ustoz uy vazifasi beradi — so'zlar ro'yxati\n" +
-    "🎮 O'quvchi so'zlarni Sozdon'da o'yin orqali yodlaydi\n" +
-    "📊 Natija avtomatik ustozga keladi: kim bajardi, necha ball\n" +
-    "🔔 Yangi vazifa va natijalar haqida shu yerda xabar beraman\n\n" +
-    "<b>Qanday boshlash:</b> ustozingiz yoki markazingiz bergan havolani bosing — ro'yxatdan o'tish shart emas.",
+    "Qisqasi, men ustoz bilan o'quvchi o'rtasidagi ko'prikman 🌉\n\n" +
+    "Ustoz uyga so'z beradi — siz ularni Sozdon'da o'yin qilib yodlaysiz. " +
+    "Daftar yo'q, zerikish yo'q 😄 Natijangiz esa o'zi ustozga yetib boradi.\n\n" +
+    "Boshlash juda oson: ustozingiz yoki markazingiz bergan havolani bosing — bo'ldi, ro'yxatdan o'tish shart emas.",
   STUDENT:
-    "<b>Siz o'quvchisiz. Imkoniyatlaringiz:</b>\n" +
-    "📚 Ustoz bergan vazifalarni ko'rish\n" +
-    "🎮 So'zlarni Sozdon'da o'yin orqali yodlash\n" +
-    "🏆 Natijangiz darhol ustozga boradi\n" +
-    "🔔 Yangi vazifa berilganda shu yerda xabar olasiz",
+    "Sizni bu yerda ko'rganimdan xursandman! 🙌\n\n" +
+    "Ustoz vazifa berishi bilan shu yerga xabar qilaman. Siz esa so'zlarni o'yin qilib yodlaysiz — " +
+    "har bir to'g'ri javob ball, natija esa darhol ustozga boradi. 🏆\n\n" +
+    "Vazifalaringizni ko'rish uchun pastdagi tugmani bosing 👇",
   TEACHER:
-    "<b>Siz ustozsiz. Imkoniyatlaringiz:</b>\n" +
-    "👥 Guruh ochish va o'quvchilarni havola orqali qo'shish\n" +
-    "📚 Vazifa berish — so'zlarni yozing yoki PDF/Word/Excel yuklang\n" +
-    "📊 Kim bajardi, kim bajarmadi, kim necha ball oldi — bir joyda\n" +
-    "🔔 O'quvchi vazifani bajarganda shu yerda xabar olasiz",
+    "Ustoz, xush kelibsiz! 👨‍🏫\n\n" +
+    "Endi daftar tekshirish va Telegram guruhda «kim qildi, kim qilmadi» deb qidirish shart emas.\n\n" +
+    "• Guruh oching va o'quvchilarga bitta havola yuboring\n" +
+    "• So'zlarni yozing yoki PDF/Word faylni yuklang\n" +
+    "• Kim bajardi, kim necha ball oldi — hammasini bir joyda ko'rasiz\n\n" +
+    "O'quvchi vazifani tugatishi bilan sizga shu yerda yozaman 😉",
   BRANCH_ADMIN:
-    "<b>Siz markaz adminisiz. Imkoniyatlaringiz:</b>\n" +
-    "🧑‍🏫 Ustozlarni havola orqali qo'shish\n" +
-    "👥 Guruhlar va o'quvchilarni kuzatish\n" +
-    "📊 Markaz bo'yicha vazifalar statistikasi",
+    "Xush kelibsiz! 🏫 Markazingizni birga boshqaramiz.\n\n" +
+    "Ustozlarga bitta havola yuborasiz — ular o'zlari qo'shiladi, guruh ochadi va o'quvchilarni chaqiradi. " +
+    "Siz esa butun markaz bo'yicha kim qanday ishlayotganini kuzatib turasiz.",
   SUPER_ADMIN:
-    "<b>Siz super adminsiz. Imkoniyatlaringiz:</b>\n" +
-    "🏫 Yangi o'quv markazlarini qo'shish\n" +
-    "🔗 Markaz adminiga taklif havolasini yuborish\n" +
-    "📈 Barcha markazlar statistikasi",
+    "Salom, boshliq! 😎\n\n" +
+    "Yangi markaz qo'shing, adminiga havola yuboring — qolganini ular o'zlari qiladi. " +
+    "Barcha markazlar statistikasi esa ilovada sizni kutyapti.",
 };
 
 const ROLE_NAME: Record<Role, string> = {
-  STUDENT: "o'quvchi",
-  TEACHER: 'ustoz',
-  BRANCH_ADMIN: 'markaz admini',
-  SUPER_ADMIN: 'super admin',
+  STUDENT: "o'quvchimiz",
+  TEACHER: 'ustozimiz',
+  BRANCH_ADMIN: 'markaz adminimiz',
+  SUPER_ADMIN: 'super adminimiz',
 };
+
+/** Toshkent vaqti bo'yicha salomlashuv */
+function greeting() {
+  const h = (new Date().getUTCHours() + 5) % 24;
+  if (h >= 5 && h < 11) return 'Xayrli tong';
+  if (h >= 11 && h < 18) return 'Assalomu alaykum';
+  if (h >= 18 && h < 23) return 'Xayrli kech';
+  return 'Assalomu alaykum';
+}
 
 async function reply(chatId: number, text: string, buttons: InlineButton[][]) {
   await tg('sendMessage', {
@@ -119,13 +124,13 @@ export async function handleUpdate(update: { message?: TgMessage }) {
   const role: Role | 'GUEST' = user?.role ?? 'GUEST';
 
   if (command === '/start') {
-    const who = user
-      ? `Siz <b>${ROLE_NAME[user.role]}</b> sifatida ro'yxatdasiz${user.branch ? ` (${escapeHtml(user.branch.name)})` : ''}.`
-      : "Men <b>EduTask</b> yordamchisiman — o'quv markazlari uchun uy vazifalari tizimi.";
     const invite = payload && /^[A-Za-z0-9]{6,20}$/.test(payload) ? payload : undefined;
+    const who = user
+      ? `Siz bizning ${ROLE_NAME[user.role]}siz${user.branch ? ` — ${escapeHtml(user.branch.name)}` : ''}. 😊`
+      : "Men <b>EduTask</b> — o'quv markazlari uchun uy vazifasi yordamchisiman.";
     const intro =
-      `Assalomu alaykum, ${firstName}! 👋\n${who}\n\n` +
-      (invite ? "Taklif havolasi qabul qilindi — pastdagi tugmani bosing.\n\n" : '') +
+      `${greeting()}, ${firstName}! 👋\n${who}\n\n` +
+      (invite ? "Sizni taklif qilishibdi! 🎉 Pastdagi tugmani bosing — darhol qo'shilasiz.\n\n" : '') +
       CAPABILITIES[role] +
       (user ? '' : contactLine());
     await reply(msg.chat.id, intro, [[openAppButton(invite)]]);
@@ -138,18 +143,25 @@ export async function handleUpdate(update: { message?: TgMessage }) {
   }
 
   if (command === '/app') {
-    await reply(msg.chat.id, "Ilovani ochish uchun tugmani bosing 👇", [[openAppButton()]]);
+    await reply(msg.chat.id, "Marhamat, ilova tayyor 👇", [[openAppButton()]]);
     return;
   }
 
-  await reply(
-    msg.chat.id,
-    "Men hozircha buyruqlar bilan ishlayman:\n/start — boshlash\n/help — imkoniyatlar\n/app — ilovani ochish",
-    [[openAppButton()]],
-  );
+  // Erkin matn — do'stona javob
+  const lower = text.toLowerCase();
+  let answer: string;
+  if (/^(salom|assalom|asalom|hi|hello|privet)/.test(lower)) {
+    answer = `Va alaykum assalom, ${firstName}! 😊 Qanday yordam bera olay?`;
+  } else if (/(rahmat|raxmat|spasibo|thanks)/.test(lower)) {
+    answer = "Arzimaydi! 🤗 Yana nimadir kerak bo'lsa, shu yerdaman.";
+  } else {
+    answer =
+      "Hozircha suhbatni yaxshi tushunolmayman 😅, lekin shu buyruqlar bilan doim yordam beraman:\n\n" +
+      "/start — tanishish\n/help — nimalar qila olaman\n/app — ilovani ochish";
+  }
+  await reply(msg.chat.id, answer, [[openAppButton()]]);
 }
 
-/** Server ishga tushganda botni sozlaydi (har safar xavfsiz qayta chaqiriladi). */
 export async function setupBot() {
   if (!env.telegram.botToken) {
     console.warn('[bot] TELEGRAM_BOT_TOKEN yo\'q — bot sozlanmadi');
@@ -179,9 +191,9 @@ export async function setupBot() {
   });
   await tg('setMyDescription', {
     description:
-      "Assalomu alaykum! 👋 Men EduTask yordamchisiman.\n\n" +
-      "📚 Ustoz uy vazifasi beradi\n🎮 O'quvchi so'zlarni Sozdon'da o'yin orqali yodlaydi\n" +
-      "📊 Natija avtomatik ustozga keladi\n\nBoshlash uchun «Start» ni bosing.",
+      "Assalomu alaykum! 👋 Men EduTask — ustoz va o'quvchilarning yordamchisiman.\n\n" +
+      "Ustoz uyga so'z beradi, o'quvchi ularni o'yin qilib yodlaydi, natija esa o'zi ustozga yetib boradi. " +
+      "Daftar ham, chalkashlik ham yo'q 😊\n\n«Start» ni bosing — tanishib olamiz!",
   });
   console.log('[bot] sozlandi', base ? `(webhook: ${base}/api/telegram/webhook)` : '(webhook URL yo\'q)');
 }

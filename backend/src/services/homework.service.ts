@@ -82,8 +82,8 @@ export async function createHomework(input: CreateHomeworkInput) {
     void sendTelegramMessage(
       env.telegram.botToken,
       r.telegramId!,
-      `📚 Yangi vazifa: <b>${escapeHtml(homework.title)}</b>\nSo'zlar soni: ${allWords.length}`,
-      { text: 'Vazifani ochish', url: appLink },
+      `📚 Yangi vazifa keldi!\n\n<b>${escapeHtml(homework.title)}</b> — ${allWords.length} ta so'z. Keling, o'yin qilib yodlaymiz 💪`,
+      { text: '🎮 Boshlash', url: appLink },
     );
   }
 

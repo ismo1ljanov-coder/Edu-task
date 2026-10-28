@@ -127,7 +127,7 @@ export async function saveSozdonResult(token: string, correct: number, total: nu
         await sendTelegramMessage(
           env.telegram.botToken,
           homework.teacher.user.telegramId,
-          `✅ <b>${escapeHtml(student.user.fullName)}</b> "${escapeHtml(homework.title)}" vazifasini bajardi: <b>${correct}/${total}</b>`,
+          `${correct / total >= 0.8 ? '🌟' : '✅'} <b>${escapeHtml(student.user.fullName)}</b> «${escapeHtml(homework.title)}» vazifasini tugatdi — <b>${correct}/${total}</b>${correct === total ? '. Hammasi to\'g\'ri, qoyil! 🎉' : ''}`,
         );
       }
     }
