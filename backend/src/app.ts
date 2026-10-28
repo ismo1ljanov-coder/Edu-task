@@ -23,6 +23,7 @@ import statsRoutes from './routes/stats.routes';
 
 export function createApp(): Express {
   const app = express();
+  app.set('trust proxy', 1);
 
   // --- Security & platform middleware ---------------------------------------
   app.use(helmet());
