@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
+import { InviteButton } from '../../components/InviteButton';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
 import { groupApi } from '../../api/endpoints';
 import { Group } from '../../types';
@@ -30,7 +31,8 @@ export function TeacherGroupsPage() {
           />
         ) : (
           groups.map((g) => (
-            <Card key={g.id} className="flex items-center justify-between">
+            <Card key={g.id}>
+              <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-brand-ink">{g.name}</p>
                 <p className="text-xs text-brand-slate">{g._count?.homeworks ?? 0} ta homework</p>
@@ -39,6 +41,13 @@ export function TeacherGroupsPage() {
                 <Users className="h-3.5 w-3.5" aria-hidden />
                 {g._count?.students ?? 0}
               </div>
+              </div>
+              <InviteButton
+                role="STUDENT"
+                groupId={g.id}
+                label="O'quvchilarni taklif qilish"
+                shareText={`${g.name} guruhi: uy vazifalari uchun EduTask'ga kiring`}
+              />
             </Card>
           ))
         )}

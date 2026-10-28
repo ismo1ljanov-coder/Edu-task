@@ -17,6 +17,25 @@ export const authApi = {
       { phone, password },
     ),
   me: () => apiClient.get<{ success: true; data: AuthUser }>('/auth/me'),
+  telegram: (initData: string, startParam?: string) =>
+    apiClient.post<{ success: true; data: { accessToken: string; refreshToken: string; user: AuthUser } }>(
+      '/auth/telegram',
+      { startParam },
+      { headers: { 'X-Telegram-Init-Data': initData } },
+    ),
+};
+
+// --- Taklif havolalari (Telegram) --------------------------------------------
+export interface InviteResult {
+  code: string;
+  role: string;
+  link: string;
+  uses: number;
+  expiresAt: string;
+}
+export const inviteApi = {
+  create: (payload: { role: 'BRANCH_ADMIN' | 'TEACHER' | 'STUDENT'; branchId?: string; groupId?: string }) =>
+    apiClient.post<{ success: true; data: InviteResult }>('/invites', payload),
 };
 
 // --- Branches (Super Admin) --------------------------------------------------
@@ -78,9 +97,10 @@ export const homeworkApi = {
     apiClient.get<{ success: true; data: HomeworkResultRow[] }>('/homework/student/list'),
 };
 
-// --- So'zdon (mock backend contract; real button opens sozdon.uz directly) -----
+// --- So'zdon: imzolangan havola orqali vazifani Sozdon'da ochish ---------------
 export const sozdonApi = {
-  start: (homeworkId: string) => apiClient.post('/sozdon/start', { homeworkId }),
+  link: (homeworkId: string) =>
+    apiClient.post<{ success: true; data: { url: string } }>('/sozdon/link', { homeworkId }),
 };
 
 // --- Notifications -----------------------------------------------------------

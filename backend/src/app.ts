@@ -18,6 +18,7 @@ import userRoutes from './routes/user.routes';
 import groupRoutes from './routes/group.routes';
 import homeworkRoutes from './routes/homework.routes';
 import sozdonRoutes from './routes/sozdon.routes';
+import inviteRoutes from './routes/invite.routes';
 import notificationRoutes from './routes/notification.routes';
 import statsRoutes from './routes/stats.routes';
 
@@ -54,6 +55,7 @@ export function createApp(): Express {
   app.use('/api/groups', groupRoutes);
   app.use('/api/homework', homeworkRoutes);
   app.use('/api/sozdon', sozdonRoutes);
+  app.use('/api/invites', inviteRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/stats', statsRoutes);
 

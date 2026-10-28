@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Plus, X, Users, GraduationCap } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
+import { InviteButton } from '../../components/InviteButton';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
 import { Button } from '../../components/ui/Button';
 import { branchApi } from '../../api/endpoints';
@@ -89,6 +90,12 @@ export function SuperAdminBranchesPage() {
                   {b._count?.students ?? 0} o'quvchi
                 </span>
               </div>
+              <InviteButton
+                role="BRANCH_ADMIN"
+                branchId={b.id}
+                label="Markaz adminini taklif qilish"
+                shareText={`${b.name} — EduTask'ga markaz admini sifatida kiring`}
+              />
             </Card>
           ))
         )}

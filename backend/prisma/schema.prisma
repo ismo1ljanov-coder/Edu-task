@@ -60,12 +60,17 @@ model User {
   fullName     String
   role         Role
   isActive     Boolean  @default(true)
+
+  // Telegram orqali kirish (mini app). Telegram foydalanuvchilarida phone = "tg:<id>".
+  telegramId       String? @unique
+  telegramUsername String?
   branchId     String?
   branch       Branch?  @relation(fields: [branchId], references: [id])
 
   teacher       Teacher?
   student       Student?
   notifications Notification[]
+  invites       Invite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,6 +89,7 @@ model Branch {
   teachers  Teacher[]
   students  Student[]
   groups    Group[]
+  invites   Invite[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -138,6 +144,7 @@ model Group {
 
   students  Student[]
   homeworks Homework[]
+  invites   Invite[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -245,4 +252,24 @@ model Notification {
 
   @@index([userId])
   @@index([userId, isRead])
+}
+
+// Telegram mini app taklif havolasi: t.me/<bot>/<app>?startapp=<code>
+model Invite {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  role        Role
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  groupId     String?
+  group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  uses        Int      @default(0)
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([branchId])
+  @@index([groupId])
 }

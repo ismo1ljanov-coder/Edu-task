@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { getTelegram } from '../../telegram';
 import { GraduationCap, BookOpenCheck, Users, Building2, ShieldCheck, Loader2, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,7 +23,7 @@ const demoAccounts: { label: string; hint: string; phone: string; icon: LucideIc
 ];
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, isLoading, telegramError } = useAuth();
   const navigate = useNavigate();
   const [loadingPhone, setLoadingPhone] = useState<string | null>(null);
 
@@ -39,6 +40,29 @@ export function LoginPage() {
     } finally {
       setLoadingPhone(null);
     }
+  }
+
+  if (!isLoading && user) return <Navigate to={roleHome[user.role] ?? '/'} replace />;
+
+  // Telegram ichida demo tugmalar ko'rsatilmaydi — faqat taklif havolasi orqali kiriladi
+  if (getTelegram()) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-blue-50 to-white px-4">
+        <div className="w-full max-w-sm rounded-xl2 bg-white p-6 text-center shadow-card">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue-500">
+            {isLoading ? (
+              <Loader2 className="h-7 w-7 animate-spin text-white" aria-hidden />
+            ) : (
+              <GraduationCap className="h-7 w-7 text-white" aria-hidden />
+            )}
+          </div>
+          <h1 className="text-xl font-bold text-brand-ink">EduTask</h1>
+          <p className="mt-2 text-sm text-brand-slate">
+            {isLoading ? 'Kirilmoqda...' : telegramError ?? "Ustozingiz bergan havola orqali kiring."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

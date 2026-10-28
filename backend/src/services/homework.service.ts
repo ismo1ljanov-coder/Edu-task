@@ -1,4 +1,6 @@
 import { HomeworkLevel } from '@prisma/client';
+import { env } from '../config/env';
+import { escapeHtml, sendTelegramMessage } from '../utils/telegram';
 import { prisma } from '../config/prisma';
 import { ApiError } from '../utils/ApiError';
 import { extractWordsFromFile, detectFileType } from './wordExtractor.service';
@@ -69,6 +71,21 @@ export async function createHomework(input: CreateHomeworkInput) {
       message: `"${homework.title}" nomli yangi uy vazifasi berildi`,
     })),
   });
+
+  // Telegram orqali o'quvchilarga xabar (bot bilan yozishmasi bor bo'lsa yetib boradi)
+  const recipients = await prisma.user.findMany({
+    where: { id: { in: students.map((s) => s.userId) }, telegramId: { not: null } },
+    select: { telegramId: true },
+  });
+  const appLink = `https://t.me/${env.telegram.botUsername}/${env.telegram.appShortName}`;
+  for (const r of recipients) {
+    void sendTelegramMessage(
+      env.telegram.botToken,
+      r.telegramId!,
+      `📚 Yangi vazifa: <b>${escapeHtml(homework.title)}</b>\nSo'zlar soni: ${allWords.length}`,
+      { text: 'Vazifani ochish', url: appLink },
+    );
+  }
 
   return homework;
 }

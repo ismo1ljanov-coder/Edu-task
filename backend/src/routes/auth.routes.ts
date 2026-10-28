@@ -62,6 +62,9 @@ router.post(
  *     responses:
  *       200: { description: Foydalanuvchi profili }
  */
+// Telegram Mini App orqali kirish. initData sarlavhada keladi (body sanitizatsiyasidan o'tmasin).
+router.post('/telegram', loginLimiter, authController.telegramLogin);
+
 router.get('/me', authenticate, authController.me);
 
 export default router;

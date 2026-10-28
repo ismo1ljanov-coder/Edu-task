@@ -30,4 +30,20 @@ export const env = {
   },
 
   maxUploadMb: parseInt(required('MAX_UPLOAD_MB', '10'), 10),
+
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    botUsername: process.env.TELEGRAM_BOT_USERNAME ?? 'sozdon_bot',
+    appShortName: process.env.TELEGRAM_APP_SHORT_NAME ?? 'app',
+    superAdminIds: (process.env.SUPER_ADMIN_TELEGRAM_IDS ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  },
+
+  sozdon: {
+    url: (process.env.SOZDON_URL ?? 'https://sozdon.uz').replace(/\/+$/, ''),
+    // EduTask → Sozdon havolasidagi imzo kaliti
+    secret: process.env.SOZDON_SHARED_SECRET,
+  },
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Phone } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
+import { InviteButton } from '../../components/InviteButton';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
 import { Button } from '../../components/ui/Button';
 import { AddPersonModal } from '../../components/ui/AddPersonModal';
@@ -41,6 +42,11 @@ export function BranchTeachersPage() {
         }
       />
       <div className="space-y-3 px-4 py-5 sm:px-6">
+        <Card>
+          <p className="text-sm font-semibold text-brand-ink">Ustozlarni Telegram orqali qo'shing</p>
+          <p className="text-xs text-brand-slate">Havolani ustozga yuboring — u bosib kirsa, ro'yxatga o'zi qo'shiladi.</p>
+          <InviteButton role="TEACHER" label="Ustoz taklif qilish" shareText="EduTask'ga ustoz sifatida kiring" />
+        </Card>
         {teachers === null ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16" />)
         ) : teachers.length === 0 ? (

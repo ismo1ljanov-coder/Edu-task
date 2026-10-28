@@ -1,0 +1,16 @@
+# Render bepul serveri 15 daqiqa ishlatilmasa uxlab qoladi va keyingi ochilish ~50 soniya kutadi.
+# Bu workflow har 10 daqiqada serverni "uyg'otib" turadi.
+name: Keep Render awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint
+        run: curl -fsS --max-time 90 --retry 2 https://edutask-api.onrender.com/api/health || true

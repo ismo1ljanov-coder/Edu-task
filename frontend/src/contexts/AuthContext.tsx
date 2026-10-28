@@ -2,10 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { AuthUser } from '../types';
 import { authApi } from '../api/endpoints';
 import { getApiErrorMessage } from '../api/client';
+import { getTelegram } from '../telegram';
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
+  /** Telegram orqali kirish xatosi (masalan, havolasiz kirgan bo'lsa) */
+  telegramError: string | null;
   login: (phone: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -15,10 +18,38 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+
+  function saveSession(data: { accessToken: string; refreshToken: string; user: AuthUser }) {
+    localStorage.setItem('edutask_access_token', data.accessToken);
+    localStorage.setItem('edutask_refresh_token', data.refreshToken);
+    localStorage.setItem('edutask_user', JSON.stringify(data.user));
+    setUser(data.user);
+  }
 
   useEffect(() => {
+    const tg = getTelegram();
     const stored = localStorage.getItem('edutask_user');
     const token = localStorage.getItem('edutask_access_token');
+
+    if (tg) {
+      // Telegram ichida: har safar Telegram orqali kiramiz (taklif havolasi ham shu yerda qabul qilinadi)
+      tg.ready();
+      tg.expand();
+      authApi
+        .telegram(tg.initData, tg.initDataUnsafe?.start_param)
+        .then(({ data }) => {
+          saveSession(data.data);
+          tg.requestWriteAccess?.();
+        })
+        .catch((error) => {
+          setTelegramError(getApiErrorMessage(error, "Telegram orqali kirib bo'lmadi"));
+          if (stored && token) setUser(JSON.parse(stored));
+        })
+        .finally(() => setIsLoading(false));
+      return;
+    }
+
     if (stored && token) {
       setUser(JSON.parse(stored));
     }
@@ -28,10 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(phone: string, password: string) {
     try {
       const { data } = await authApi.login(phone, password);
-      localStorage.setItem('edutask_access_token', data.data.accessToken);
-      localStorage.setItem('edutask_refresh_token', data.data.refreshToken);
-      localStorage.setItem('edutask_user', JSON.stringify(data.data.user));
-      setUser(data.data.user);
+      saveSession(data.data);
     } catch (error) {
       throw new Error(getApiErrorMessage(error, "Telefon raqami yoki parol noto'g'ri"));
     }
@@ -45,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, telegramError, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
