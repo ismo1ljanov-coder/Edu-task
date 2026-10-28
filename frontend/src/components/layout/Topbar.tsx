@@ -19,12 +19,12 @@ export function Topbar({ title, action }: { title: string; action?: ReactNode })
       <div className="flex items-center gap-2">
         {action}
         <NotificationBell />
-        {/* Telefonda yon panel yashirin, shuning uchun chiqish tugmasi shu yerda */}
+        {/* Chiqish tugmasi har doim tepada ko'rinadi */}
         <button
           type="button"
           onClick={handleLogout}
           aria-label="Chiqish"
-          className="flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-medium text-red-500 hover:bg-red-50 lg:hidden"
+          className="flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
         >
           <LogOut className="h-4.5 w-4.5" aria-hidden />
           Chiqish
