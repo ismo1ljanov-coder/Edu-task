@@ -9,7 +9,7 @@ import { escapeHtml } from '../utils/telegram';
 // Server ishga tushganda webhook, buyruqlar, menyu tugmasi va tavsif o'zi sozlanadi.
 // ---------------------------------------------------------------------------
 
-type InlineButton = { text: string; url?: string; web_app?: { url: string } };
+type InlineButton = { text: string; url?: string; web_app?: { url: string }; callback_data?: string };
 
 async function tg(method: string, payload: Record<string, unknown>) {
   if (!env.telegram.botToken) return null;
@@ -104,19 +104,111 @@ async function reply(chatId: number, text: string, buttons: InlineButton[][]) {
   });
 }
 
+interface TgFrom {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+}
+
 interface TgMessage {
+  message_id: number;
   chat: { id: number; type: string };
-  from?: { id: number; first_name?: string; username?: string };
+  from?: TgFrom;
   text?: string;
 }
 
-export async function handleUpdate(update: { message?: TgMessage }) {
+interface TgCallbackQuery {
+  id: string;
+  from: TgFrom;
+  data?: string;
+  message?: TgMessage;
+}
+
+// ---------------------------------------------------------------------------
+// Sozdon.uz'ga bot orqali kirish.
+// Sayt: t.me/sozdon_bot?start=login_<nonce>  →  bot tasdiqlash tugmasini ko'rsatadi
+// → bosilganda TelegramLogin yoziladi → Sozdon serveri uni bir marta oladi.
+// ---------------------------------------------------------------------------
+const LOGIN_NONCE_RE = /^[a-f0-9]{32}$/;
+const sozdonLoginUrl = () => `${env.sozdon.url}/login`;
+
+async function askLoginConfirm(chatId: number, nonce: string, firstName: string) {
+  await reply(
+    chatId,
+    `${greeting()}, ${firstName}! 👋\n\n` +
+      "<b>Sozdon.uz</b> saytiga Telegram orqali kirmoqchisiz.\n" +
+      'Tasdiqlash uchun pastdagi tugmani bosing 👇\n\n' +
+      "<i>Agar hozir saytda «Telegram orqali kirish» tugmasini bosmagan bo'lsangiz — tasdiqlamang.</i>",
+    [[{ text: '✅ Tasdiqlash va kirish', callback_data: `sl:${nonce}` }]],
+  );
+}
+
+async function confirmLogin(cb: TgCallbackQuery, nonce: string) {
+  await prisma.telegramLogin.upsert({
+    where: { nonce },
+    create: {
+      nonce,
+      telegramId: String(cb.from.id),
+      telegramUsername: cb.from.username ?? null,
+      firstName: cb.from.first_name ?? null,
+      lastName: cb.from.last_name ?? null,
+    },
+    update: {},
+  });
+  // Eski (10 daqiqadan ortiq) so'rovlarni tozalash
+  await prisma.telegramLogin.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 10 * 60_000) } } });
+
+  await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi ✅' });
+  if (cb.message) {
+    await tg('editMessageText', {
+      chat_id: cb.message.chat.id,
+      message_id: cb.message.message_id,
+      parse_mode: 'HTML',
+      text: "✅ <b>Tasdiqlandi!</b>\n\nSaytga qayting — siz allaqachon kirgansiz. Agar sahifa o'zgarmagan bo'lsa, pastdagi tugmani bosing.",
+      reply_markup: { inline_keyboard: [[{ text: "🌐 Sozdon'ga qaytish", url: sozdonLoginUrl() }]] },
+    });
+  }
+}
+
+/** Sozdon serveri uchun: tasdiqlangan kirishni bir marta beradi va o'chiradi. */
+export async function claimSozdonLogin(nonce: string) {
+  if (!LOGIN_NONCE_RE.test(nonce)) return null;
+  const row = await prisma.telegramLogin.findUnique({ where: { nonce } });
+  if (!row) return null;
+  await prisma.telegramLogin.delete({ where: { nonce } }).catch(() => {});
+  if (Date.now() - row.createdAt.getTime() > 10 * 60_000) return null;
+  return {
+    telegramId: row.telegramId,
+    username: row.telegramUsername,
+    firstName: row.firstName,
+    lastName: row.lastName,
+  };
+}
+
+export async function handleUpdate(update: { message?: TgMessage; callback_query?: TgCallbackQuery }) {
+  const cb = update.callback_query;
+  if (cb?.data?.startsWith('sl:')) {
+    const nonce = cb.data.slice(3);
+    if (LOGIN_NONCE_RE.test(nonce)) await confirmLogin(cb, nonce);
+    else await tg('answerCallbackQuery', { callback_query_id: cb.id, text: "So'rov eskirgan" });
+    return;
+  }
+
   const msg = update.message;
   if (!msg?.text || msg.chat.type !== 'private' || !msg.from) return;
 
   const text = msg.text.trim();
   const [command, payload] = text.split(/\s+/, 2);
   const firstName = escapeHtml(msg.from.first_name || 'do‘st');
+
+  if (command === '/start' && payload?.startsWith('login_')) {
+    const nonce = payload.slice('login_'.length);
+    if (LOGIN_NONCE_RE.test(nonce)) {
+      await askLoginConfirm(msg.chat.id, nonce, firstName);
+      return;
+    }
+  }
   const user = await prisma.user.findUnique({
     where: { telegramId: String(msg.from.id) },
     include: { branch: { select: { name: true } } },
@@ -172,7 +264,7 @@ export async function setupBot() {
     await tg('setWebhook', {
       url: `${base}/api/telegram/webhook`,
       secret_token: webhookSecret(),
-      allowed_updates: ['message'],
+      allowed_updates: ['message', 'callback_query'],
       drop_pending_updates: false,
     });
   }

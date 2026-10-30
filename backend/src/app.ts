@@ -19,7 +19,7 @@ import groupRoutes from './routes/group.routes';
 import homeworkRoutes from './routes/homework.routes';
 import sozdonRoutes from './routes/sozdon.routes';
 import inviteRoutes from './routes/invite.routes';
-import { handleUpdate, webhookSecret } from './services/bot.service';
+import { claimSozdonLogin, handleUpdate, webhookSecret } from './services/bot.service';
 import notificationRoutes from './routes/notification.routes';
 import statsRoutes from './routes/stats.routes';
 
@@ -48,6 +48,18 @@ export function createApp(): Express {
     }
     res.sendStatus(200);
     handleUpdate(req.body).catch((e) => console.warn('[bot] update xato:', (e as Error).message));
+  });
+
+  // Sozdon serveri bot orqali kirishni tekshiradi (har 2-3 soniyada so'raydi, shuning uchun
+  // limiterdan oldin; nonce 128-bit tasodifiy va bir martalik).
+  app.get('/api/sozdon/telegram-login/:nonce', async (req, res) => {
+    try {
+      const data = await claimSozdonLogin(String(req.params.nonce));
+      res.json(data ? { success: true, status: 'confirmed', data } : { success: true, status: 'pending' });
+    } catch (e) {
+      console.warn('[sozdon-login] xato:', (e as Error).message);
+      res.status(500).json({ success: false, message: 'Server xatosi' });
+    }
   });
 
   app.use(sanitizeBody); // XSS sanitation on every request body

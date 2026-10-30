@@ -273,3 +273,16 @@ model Invite {
   @@index([branchId])
   @@index([groupId])
 }
+
+// Sozdon.uz saytiga @sozdon_bot orqali kirish: sayt nonce yaratadi, foydalanuvchi botda
+// tasdiqlaydi, Sozdon serveri natijani bir marta oladi (keyin yozuv o'chiriladi).
+model TelegramLogin {
+  nonce            String   @id
+  telegramId       String
+  telegramUsername String?
+  firstName        String?
+  lastName         String?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
