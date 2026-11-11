@@ -65,6 +65,7 @@ router.post(
     body('startDate').isISO8601(),
     body('endDate').isISO8601(),
     body('groupId').isString().notEmpty(),
+    body('language').optional().isIn(['en', 'ru', 'ar']),
   ]),
   homeworkController.create,
 );
@@ -81,6 +82,8 @@ router.get('/', requireRole(Role.TEACHER), homeworkController.listForTeacher);
  *       200: { description: Vazifa statistikasi }
  */
 router.get('/:id/stats', requireRole(Role.TEACHER), homeworkController.stats);
+router.get('/:id/results', requireRole(Role.TEACHER), homeworkController.results);
+router.get('/:id/export', requireRole(Role.TEACHER), homeworkController.exportResults);
 
 /**
  * @openapi

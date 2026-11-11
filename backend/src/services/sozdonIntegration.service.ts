@@ -47,6 +47,28 @@ export async function createSozdonLink(userId: string, homeworkId: string) {
   return { url: `${env.sozdon.url}/edutask?t=${encodeURIComponent(token)}` };
 }
 
+/**
+ * Sozdon lug'atidan tarjima qidiradi (ustoz tarjima yozmagan so'zlar uchun).
+ * Sozdon ishlamasa bo'sh natija qaytaradi — vazifa yaratish to'xtamaydi.
+ */
+export async function lookupTranslations(words: string[], language: string): Promise<Record<string, string>> {
+  if (!words.length) return {};
+  try {
+    const r = await fetch(`${env.sozdon.url}/api/edutask/lookup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language, words: words.slice(0, 500) }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!r.ok) return {};
+    const body = (await r.json()) as { translations?: Record<string, string> };
+    return body.translations ?? {};
+  } catch (e) {
+    console.warn('[sozdon] lookup xato:', (e as Error).message);
+    return {};
+  }
+}
+
 /** Sozdon serveri vazifa so'zlarini oladi. */
 export async function getHomeworkForSozdon(token: string) {
   const { sid, hw } = verifyToken(token);
@@ -65,6 +87,7 @@ export async function getHomeworkForSozdon(token: string) {
     homeworkId: homework.id,
     title: homework.title,
     level: homework.level,
+    language: homework.language,
     studentName: student.user.fullName,
     bestProgress: result?.progress ?? 0,
     returnUrl: env.clientUrl,

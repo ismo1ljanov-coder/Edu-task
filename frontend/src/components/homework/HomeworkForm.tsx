@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { UploadCloud, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { groupApi, homeworkApi } from '../../api/endpoints';
-import { Group, HomeworkLevel } from '../../types';
+import { Group, HomeworkLanguage, HomeworkLevel } from '../../types';
 import { getApiErrorMessage } from '../../api/client';
 import { notify } from '../ui/toast';
 
@@ -14,11 +14,18 @@ const levels: { value: HomeworkLevel; label: string }[] = [
   { value: 'ADVANCED', label: 'Advanced' },
 ];
 
+const languages: { value: HomeworkLanguage; label: string; example: string }[] = [
+  { value: 'en', label: '🇬🇧 Ingliz tili', example: 'apple - olma\njourney - sayohat\nweather' },
+  { value: 'ru', label: '🇷🇺 Rus tili', example: 'яблоко - olma\nкнига - kitob\nпогода' },
+  { value: 'ar', label: '🇸🇦 Arab tili', example: 'كتاب - kitob\nقلم - qalam\nبيت' },
+];
+
 export function HomeworkForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [level, setLevel] = useState<HomeworkLevel>('INTERMEDIATE');
+  const [language, setLanguage] = useState<HomeworkLanguage>('en');
   const [groupId, setGroupId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -45,14 +52,27 @@ export function HomeworkForm({ onClose, onCreated }: { onClose: () => void; onCr
       formData.append('title', title);
       formData.append('description', description);
       formData.append('level', level);
+      formData.append('language', language);
       formData.append('groupId', groupId);
       formData.append('startDate', startDate);
       formData.append('endDate', endDate);
       if (manualWords.trim()) formData.append('manualWords', manualWords);
       if (file) formData.append('file', file);
 
-      await homeworkApi.createTeacher(formData);
-      notify.success('Uy vazifasi yaratildi');
+      const { data } = await homeworkApi.createTeacher(formData);
+      const created = data?.data as { words?: unknown[]; missingTranslations?: string[] } | undefined;
+      const count = created?.words?.length ?? 0;
+      const missing = created?.missingTranslations ?? [];
+      notify.success(`Uy vazifasi yaratildi — ${count} ta so'z`);
+      if (missing.length) {
+        notify.info(
+          `${missing.length} ta so'zning tarjimasi topilmadi, ular o'yinga tushmaydi: ` +
+            missing.slice(0, 8).join(', ') +
+            (missing.length > 8 ? '…' : '') +
+            ". Ularni «so'z - tarjima» ko'rinishida qo'lda qo'shishingiz mumkin.",
+          10000,
+        );
+      }
       onCreated();
     } catch (error) {
       notify.error(getApiErrorMessage(error, "Vazifa yaratishda xatolik"));
@@ -94,6 +114,26 @@ export function HomeworkForm({ onClose, onCreated }: { onClose: () => void; onCr
               rows={2}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-ink">Qaysi til so'zlari?</label>
+            <div className="grid grid-cols-3 gap-2">
+              {languages.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  onClick={() => setLanguage(l.value)}
+                  className={`rounded-xl border px-2 py-2 text-xs font-medium ${
+                    language === l.value
+                      ? 'border-brand-blue-500 bg-brand-blue-50 text-brand-blue-600'
+                      : 'border-slate-200 text-brand-slate'
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -165,18 +205,21 @@ export function HomeworkForm({ onClose, onCreated }: { onClose: () => void; onCr
               />
             </label>
             <p className="mt-1 text-xs text-brand-slate">
-              Fayl yuklanganda inglizcha so'zlar avtomatik ajratib olinadi.
+              So'zlar avtomatik ajratib olinadi. Faylda «so'z — tarjima» ko'rinishidagi ro'yxat bo'lsa,
+              tarjimalar ham olinadi; tarjimasi yo'q so'zlarga Sozdon lug'atidan tarjima qo'yiladi.
             </p>
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-ink">
-              Qo'lda so'z kiritish (vergul bilan ajrating)
+              Qo'lda so'z kiritish (har qatorda bitta, tarjimasi ixtiyoriy)
             </label>
-            <input
+            <textarea
               value={manualWords}
               onChange={(e) => setManualWords(e.target.value)}
-              placeholder="apple, journey, weather"
+              rows={4}
+              dir={language === 'ar' ? 'auto' : undefined}
+              placeholder={languages.find((l) => l.value === language)?.example}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-blue-500"
             />
           </div>

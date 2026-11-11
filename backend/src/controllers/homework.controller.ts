@@ -18,13 +18,6 @@ export const create = asyncHandler(async (req: AuthenticatedRequest, res: Respon
     | { buffer: Buffer; mimetype: string; originalname: string }
     | undefined;
 
-  const manualWords: string[] = req.body.manualWords
-    ? String(req.body.manualWords)
-        .split(',')
-        .map((w) => w.trim())
-        .filter(Boolean)
-    : [];
-
   const homework = await homeworkService.createHomework({
     title: req.body.title,
     description: req.body.description,
@@ -33,7 +26,8 @@ export const create = asyncHandler(async (req: AuthenticatedRequest, res: Respon
     endDate: req.body.endDate,
     teacherId,
     groupId: req.body.groupId,
-    manualWords,
+    language: req.body.language,
+    manualWords: req.body.manualWords ? String(req.body.manualWords) : undefined,
     file: file
       ? { buffer: file.buffer, mimeType: file.mimetype, originalName: file.originalname }
       : undefined,
@@ -74,4 +68,17 @@ export const studentDashboard = asyncHandler(async (req: AuthenticatedRequest, r
   if (!student) throw ApiError.forbidden("Faqat o'quvchilar uchun");
   const summary = await homeworkService.getStudentDashboardSummary(student.id);
   sendSuccess(res, summary);
+});
+
+export const results = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const teacherId = await resolveTeacherId(req.user!.id);
+  sendSuccess(res, await homeworkService.getHomeworkResults(String(req.params.id), teacherId));
+});
+
+export const exportResults = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const teacherId = await resolveTeacherId(req.user!.id);
+  const { buffer, filename } = await homeworkService.exportHomeworkResults(String(req.params.id), teacherId);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.send(buffer);
 });

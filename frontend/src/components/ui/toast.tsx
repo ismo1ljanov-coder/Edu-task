@@ -5,7 +5,8 @@ export const notify = {
     toast.success(message, { style: { background: '#16a34a', color: '#fff' } }),
   error: (message: string) =>
     toast.error(message, { style: { background: '#dc2626', color: '#fff' } }),
-  info: (message: string) => toast(message, { style: { background: '#1e293b', color: '#fff' } }),
+  info: (message: string, duration?: number) =>
+    toast(message, { duration, style: { background: '#1e293b', color: '#fff' } }),
 };
 
 export function AppToaster() {

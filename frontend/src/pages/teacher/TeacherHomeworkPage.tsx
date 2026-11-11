@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Plus, FileText } from 'lucide-react';
 import { Topbar } from '../../components/layout/Topbar';
 import { Card, EmptyState, Skeleton } from '../../components/ui/Primitives';
 import { Button } from '../../components/ui/Button';
 import { HomeworkForm } from '../../components/homework/HomeworkForm';
+import { HomeworkResultsModal } from '../../components/homework/HomeworkResultsModal';
 import { homeworkApi } from '../../api/endpoints';
 import { Homework } from '../../types';
 import { getApiErrorMessage } from '../../api/client';
@@ -12,6 +13,8 @@ import { notify } from '../../components/ui/toast';
 export function TeacherHomeworkPage() {
   const [homeworks, setHomeworks] = useState<Homework[] | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const closeResults = useCallback(() => setOpenId(null), []);
 
   function load() {
     homeworkApi
@@ -44,7 +47,14 @@ export function TeacherHomeworkPage() {
           />
         ) : (
           homeworks.map((hw) => (
-            <Card key={hw.id}>
+            <button
+              key={hw.id}
+              type="button"
+              onClick={() => setOpenId(hw.id)}
+              className="block w-full text-left"
+              aria-label={`${hw.title} natijalari`}
+            >
+            <Card className="transition hover:border-brand-blue-400">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-brand-ink">{hw.title}</p>
@@ -59,10 +69,14 @@ export function TeacherHomeworkPage() {
                 <span>{new Date(hw.startDate).toLocaleDateString('uz-UZ')}</span>
                 <span>{new Date(hw.endDate).toLocaleDateString('uz-UZ')}</span>
               </div>
+              <p className="mt-2 text-xs font-medium text-brand-blue-600">Natijalarni ko'rish →</p>
             </Card>
+            </button>
           ))
         )}
       </div>
+
+      {openId && <HomeworkResultsModal homeworkId={openId} onClose={closeResults} />}
 
       {showForm && (
         <HomeworkForm

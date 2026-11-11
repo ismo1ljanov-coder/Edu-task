@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import {
+  HomeworkResultsDetail,
   AuthUser,
   Branch,
   Group,
@@ -93,6 +94,9 @@ export const homeworkApi = {
       params: { page, limit },
     }),
   stats: (id: string) => apiClient.get(`/homework/${id}/stats`),
+  results: (id: string) =>
+    apiClient.get<{ success: true; data: HomeworkResultsDetail }>(`/homework/${id}/results`),
+  exportResults: (id: string) => apiClient.get<Blob>(`/homework/${id}/export`, { responseType: 'blob' }),
   studentDashboard: () =>
     apiClient.get<{ success: true; data: StudentDashboardSummary }>('/homework/student/dashboard'),
   listForStudent: () =>

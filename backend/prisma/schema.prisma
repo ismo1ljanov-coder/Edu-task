@@ -159,8 +159,10 @@ model Homework {
   title       String
   description String?
   level       HomeworkLevel
+  language    String        @default("en") // o'rganiladigan til: en | ru | ar
   startDate   DateTime
   endDate     DateTime
+  reminderSentAt DateTime? // muddat eslatmasi yuborilgan vaqt
 
   teacherId String
   teacher   Teacher @relation(fields: [teacherId], references: [id])

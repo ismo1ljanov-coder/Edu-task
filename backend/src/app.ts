@@ -18,6 +18,7 @@ import userRoutes from './routes/user.routes';
 import groupRoutes from './routes/group.routes';
 import homeworkRoutes from './routes/homework.routes';
 import sozdonRoutes from './routes/sozdon.routes';
+import { sendDueReminders } from './services/reminder.service';
 import inviteRoutes from './routes/invite.routes';
 import { claimSozdonLogin, handleUpdate, webhookSecret } from './services/bot.service';
 import notificationRoutes from './routes/notification.routes';
@@ -59,6 +60,21 @@ export function createApp(): Express {
     } catch (e) {
       console.warn('[sozdon-login] xato:', (e as Error).message);
       res.status(500).json({ success: false, message: 'Server xatosi' });
+    }
+  });
+
+  // Tashqi cron (masalan cron-job.org) uchun: bepul serverda uyqu bo'lsa ham eslatmalar ketsin.
+  // GET /api/cron/reminders?key=<CRON_SECRET>
+  app.get('/api/cron/reminders', async (req, res) => {
+    const key = process.env.CRON_SECRET;
+    if (!key || req.query.key !== key) {
+      res.sendStatus(401);
+      return;
+    }
+    try {
+      res.json({ success: true, sent: await sendDueReminders() });
+    } catch (e) {
+      res.status(500).json({ success: false, message: (e as Error).message });
     }
   });
 

@@ -1,9 +1,18 @@
 import { HomeworkLevel } from '@prisma/client';
+import * as XLSX from 'xlsx';
 import { env } from '../config/env';
 import { escapeHtml, sendTelegramMessage } from '../utils/telegram';
 import { prisma } from '../config/prisma';
 import { ApiError } from '../utils/ApiError';
-import { extractWordsFromFile, detectFileType } from './wordExtractor.service';
+import {
+  extractWordsFromFile,
+  detectFileType,
+  parseManualWords,
+  ExtractedWord,
+  HomeworkLanguage,
+  HOMEWORK_LANGUAGES,
+} from './wordExtractor.service';
+import { lookupTranslations } from './sozdonIntegration.service';
 
 interface CreateHomeworkInput {
   title: string;
@@ -13,7 +22,8 @@ interface CreateHomeworkInput {
   endDate: string;
   teacherId: string;
   groupId: string;
-  manualWords?: string[]; // words typed in by hand
+  language?: string; // en | ru | ar
+  manualWords?: string; // qo'lda: vergul yoki har qatorda, "so'z - tarjima" ham mumkin
   file?: { buffer: Buffer; mimeType: string; originalName: string };
 }
 
@@ -23,36 +33,72 @@ export async function createHomework(input: CreateHomeworkInput) {
     throw ApiError.badRequest("Bu guruh sizga tegishli emas");
   }
 
-  let extractedWords: string[] = [];
+  const language: HomeworkLanguage = HOMEWORK_LANGUAGES.includes(input.language as HomeworkLanguage)
+    ? (input.language as HomeworkLanguage)
+    : 'en';
+
+  let extracted: ExtractedWord[] = [];
   let sourceFileName: string | undefined;
   let sourceFileType: string | undefined;
 
   if (input.file) {
     const fileType = detectFileType(input.file.mimeType, input.file.originalName);
-    extractedWords = await extractWordsFromFile(input.file.buffer, fileType);
+    extracted = await extractWordsFromFile(input.file.buffer, fileType, language);
     sourceFileName = input.file.originalName;
     sourceFileType = fileType;
   }
+  const manual = input.manualWords?.trim() ? parseManualWords(input.manualWords, language) : [];
 
-  const allWords = [...new Set([...(input.manualWords ?? []), ...extractedWords])];
+  // Birlashtiramiz (qo'lda yozilgani ustun), takrorlarni olib tashlaymiz
+  const merged = new Map<string, ExtractedWord>();
+  for (const e of [...manual, ...extracted]) {
+    const k = e.word.toLowerCase();
+    const prev = merged.get(k);
+    if (!prev) merged.set(k, { ...e });
+    else if (!prev.translation && e.translation) prev.translation = e.translation;
+  }
+  const entries = [...merged.values()];
+  if (!entries.length) throw ApiError.badRequest("Kamida bitta so'z kiriting yoki fayl yuklang");
+
+  // Sozdon lug'ati: (1) tarjimasi yo'q so'zlarni to'ldiramiz; (2) inglizcha vazifada ustoz
+  // "olma — apple" deb teskari yozgan bo'lsa, juftlikni to'g'rilaymiz.
+  const swapCandidates =
+    language === 'en'
+      ? entries.filter((e) => e.translation && /^[A-Za-z][A-Za-z' -]{1,40}$/.test(e.translation)).map((e) => e.translation!.toLowerCase())
+      : [];
+  const found = await lookupTranslations(
+    [...new Set([...entries.map((e) => e.word), ...swapCandidates])],
+    language,
+  );
+  for (const e of entries) {
+    const rev = e.translation?.toLowerCase();
+    if (language === 'en' && rev && !found[e.word] && found[rev]) {
+      e.translation = e.word; // o'zbekcha tomoni
+      e.word = rev;
+    }
+    if (!e.translation && found[e.word]) e.translation = found[e.word];
+  }
+  const missingTranslations = entries.filter((e) => !e.translation).map((e) => e.word);
 
   const homework = await prisma.homework.create({
     data: {
       title: input.title,
       description: input.description,
       level: input.level,
+      language,
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       teacherId: input.teacherId,
       groupId: input.groupId,
       sourceFileName,
-      sourceFileType: sourceFileType ?? (input.manualWords?.length ? 'MANUAL' : undefined),
+      sourceFileType: sourceFileType ?? (manual.length ? 'MANUAL' : undefined),
       words: {
-        create: allWords.map((word, index) => ({ word, order: index })),
+        create: entries.map((e, index) => ({ word: e.word, translation: e.translation ?? null, order: index })),
       },
     },
     include: { words: true },
   });
+  const allWords = entries;
 
   // Create a pending result row for every student in the group + notify them.
   const students = await prisma.student.findMany({ where: { groupId: input.groupId } });
@@ -87,7 +133,7 @@ export async function createHomework(input: CreateHomeworkInput) {
     );
   }
 
-  return homework;
+  return { ...homework, missingTranslations };
 }
 
 export async function listHomeworksForTeacher(teacherId: string, page: number, limit: number, skip: number) {
@@ -183,4 +229,100 @@ export async function getStudentDashboardSummary(studentId: string) {
     progressPercent: avgProgress,
     totalHomeworkCount: results.length,
   };
+}
+
+const STATUS_UZ: Record<string, string> = {
+  NOT_STARTED: 'Boshlamagan',
+  IN_PROGRESS: 'Jarayonda',
+  COMPLETED: 'Bajardi',
+};
+
+/** Ustoz uchun: vazifa bo'yicha har bir o'quvchining natijasi. */
+export async function getHomeworkResults(homeworkId: string, teacherId: string) {
+  const homework = await prisma.homework.findUnique({
+    where: { id: homeworkId },
+    include: {
+      group: { select: { name: true } },
+      words: { orderBy: { order: 'asc' }, select: { word: true, translation: true } },
+      results: {
+        include: { student: { include: { user: { select: { fullName: true, phone: true } } } } },
+      },
+    },
+  });
+  if (!homework || homework.teacherId !== teacherId) throw ApiError.notFound('Vazifa topilmadi');
+
+  // Vazifadan keyin guruhga qo'shilgan o'quvchilar ham ro'yxatda ko'rinsin
+  const known = new Set(homework.results.map((r) => r.studentId));
+  const latecomers = await prisma.student.findMany({
+    where: { groupId: homework.groupId, id: { notIn: [...known] } },
+    include: { user: { select: { fullName: true, phone: true } } },
+  });
+  const allResults = [
+    ...homework.results,
+    ...latecomers.map((st) => ({
+      studentId: st.id,
+      student: st,
+      status: 'NOT_STARTED' as const,
+      progress: 0,
+      correctCount: 0,
+      totalCount: 0,
+      completedAt: null as Date | null,
+    })),
+  ];
+
+  const rows = allResults
+    .map((r) => ({
+      studentId: r.studentId,
+      fullName: r.student.user.fullName,
+      phone: r.student.user.phone,
+      status: r.status,
+      progress: r.progress,
+      correctCount: r.correctCount,
+      totalCount: r.totalCount,
+      completedAt: r.completedAt,
+    }))
+    .sort((a, b) => b.progress - a.progress || a.fullName.localeCompare(b.fullName));
+
+  return {
+    id: homework.id,
+    title: homework.title,
+    groupName: homework.group.name,
+    language: homework.language,
+    startDate: homework.startDate,
+    endDate: homework.endDate,
+    wordCount: homework.words.length,
+    wordsWithoutTranslation: homework.words.filter((w) => !w.translation).map((w) => w.word),
+    completed: rows.filter((r) => r.status === 'COMPLETED').length,
+    total: rows.length,
+    rows,
+  };
+}
+
+/** Ustoz uchun: natijalarni Excel (.xlsx) faylga. */
+export async function exportHomeworkResults(homeworkId: string, teacherId: string) {
+  const data = await getHomeworkResults(homeworkId, teacherId);
+  const sheetRows = data.rows.map((r, i) => ({
+    '№': i + 1,
+    "O'quvchi": r.fullName,
+    Telefon: /^tg[:_]/.test(r.phone) ? '' : r.phone,
+    Holat: STATUS_UZ[r.status] ?? r.status,
+    'Natija, %': r.progress,
+    "To'g'ri javoblar": r.totalCount ? `${r.correctCount}/${r.totalCount}` : '',
+    'Bajargan vaqti': r.completedAt ? new Date(r.completedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '',
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  ws['!cols'] = [{ wch: 4 }, { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 20 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Natijalar');
+  const words = XLSX.utils.json_to_sheet(
+    (await prisma.homeworkWord.findMany({ where: { homeworkId }, orderBy: { order: 'asc' } })).map((w, i) => ({
+      '№': i + 1,
+      "So'z": w.word,
+      Tarjima: w.translation ?? '',
+    })),
+  );
+  XLSX.utils.book_append_sheet(wb, words, "So'zlar");
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  const safe = data.title.replace(/[^\p{L}\p{N} _-]+/gu, '').trim().slice(0, 60) || 'vazifa';
+  return { buffer, filename: `${safe} - ${data.groupName}.xlsx` };
 }

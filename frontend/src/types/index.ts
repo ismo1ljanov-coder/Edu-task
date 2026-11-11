@@ -49,11 +49,37 @@ export interface HomeworkWord {
   translation?: string | null;
 }
 
+export type HomeworkLanguage = 'en' | 'ru' | 'ar';
+
+export interface HomeworkResultsDetail {
+  id: string;
+  title: string;
+  groupName: string;
+  language: HomeworkLanguage;
+  startDate: string;
+  endDate: string;
+  wordCount: number;
+  wordsWithoutTranslation: string[];
+  completed: number;
+  total: number;
+  rows: {
+    studentId: string;
+    fullName: string;
+    phone: string;
+    status: HomeworkResultStatus;
+    progress: number;
+    correctCount: number;
+    totalCount: number;
+    completedAt: string | null;
+  }[];
+}
+
 export interface Homework {
   id: string;
   title: string;
   description?: string | null;
   level: HomeworkLevel;
+  language?: HomeworkLanguage;
   startDate: string;
   endDate: string;
   group?: { name: string };
